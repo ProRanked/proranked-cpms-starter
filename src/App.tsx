@@ -19,6 +19,13 @@ import { Analytics } from './pages/Analytics';
 import { Webhooks } from './pages/Webhooks';
 import { AuditLog } from './pages/AuditLog';
 import { Limits } from './pages/Limits';
+import { Settings } from './pages/Settings';
+import { Team } from './pages/Team';
+import { ApiKeys } from './pages/ApiKeys';
+import { Wallet } from './pages/Wallet';
+import { Holds } from './pages/Holds';
+import { Events } from './pages/Events';
+import { Catalog } from './pages/Catalog';
 
 interface AppState {
   user: User | null;
@@ -71,8 +78,15 @@ function AuthedShell() {
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/webhooks" element={<Webhooks />} />
+          <Route path="/events" element={<Events />} />
           <Route path="/audit" element={<AuditLog />} />
           <Route path="/limits" element={<Limits />} />
+          <Route path="/wallet" element={<Wallet />} />
+          <Route path="/holds" element={<Holds />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/team" element={<Team />} />
+          <Route path="/api-keys" element={<ApiKeys />} />
+          <Route path="/catalog" element={<Catalog />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>

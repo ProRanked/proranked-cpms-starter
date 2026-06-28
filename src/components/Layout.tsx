@@ -9,7 +9,13 @@ const NAV: { section: string; items: [string, string, string][] }[] = [
     ['/locations', 'Locations', '📍'], ['/chargers', 'Chargers', '🔌'],
     ['/sessions', 'Sessions', '⚡'], ['/tariffs', 'Tariffs', '＄'], ['/transactions', 'Transactions', '🧾'],
   ] },
-  { section: 'Platform', items: [['/webhooks', 'Webhooks', '🪝'], ['/audit', 'Audit log', '🔎'], ['/limits', 'Limits', '🛡']] },
+  { section: 'Drivers & billing', items: [['/wallet', 'Wallets', '👛'], ['/holds', 'Fraud holds', '🚫']] },
+  { section: 'Platform', items: [
+    ['/webhooks', 'Webhooks', '🪝'], ['/events', 'Live events', '📡'], ['/audit', 'Audit log', '🔎'], ['/limits', 'Limits', '🛡'],
+  ] },
+  { section: 'Organization', items: [
+    ['/settings', 'Settings', '⚙'], ['/team', 'Team', '👥'], ['/api-keys', 'API keys', '🔑'], ['/catalog', 'Catalog', '📦'],
+  ] },
 ];
 
 export function Layout({ children }: { children: ReactNode }) {

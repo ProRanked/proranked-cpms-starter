@@ -11,10 +11,7 @@ window.PRORANKED_CONFIG = {
   // Space-delimited operator scopes. CPO re-intersects these with the operator's role, so requesting the
   // full set is safe (a Viewer still can't write).
   oidcScopes:
-    'openid profile email offline_access ' +
-    'cpms:read:chargers cpms:read:connectors cpms:read:locations cpms:read:tariffs ' +
-    'cpms:read:sessions cpms:read:cdrs cpms:read:analytics cpms:read:settings ' +
-    'cpms:write:chargers cpms:write:tariffs cpms:command:chargers',
+    'openid profile email offline_access cpms:read:chargers cpms:read:connectors cpms:read:locations cpms:read:tariffs cpms:read:sessions cpms:read:cdrs cpms:read:analytics cpms:read:settings cpms:read:webhooks cpms:read:events cpms:read:audit cpms:read:wallet cpms:write:chargers cpms:write:connectors cpms:write:locations cpms:write:tariffs cpms:write:settings cpms:write:webhooks cpms:write:team cpms:write:apikeys cpms:write:smartcharging cpms:write:loadbalancing cpms:write:firmware cpms:write:diagnostics cpms:write:wallet cpms:command:chargers cpms:command:billing',
   // The CPMS resource the token is minted for (RFC 8707 audience) — must match Identity's OperatorResource
   // and CPO's OAuth:Cpms:Audience exactly.
   oidcResource: 'https://api.proranked.cloud/cpms/v1',

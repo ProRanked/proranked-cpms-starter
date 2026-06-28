@@ -133,16 +133,41 @@ export function KV({ k, v, mono }: { k: string; v: ReactNode; mono?: boolean }) 
   );
 }
 
-export function Btn({ children, onClick, variant = 'ghost', disabled, type }: { children: ReactNode; onClick?: () => void; variant?: 'primary' | 'ghost' | 'danger'; disabled?: boolean; type?: 'button' | 'submit' }) {
+export function Btn({ children, onClick, variant = 'ghost', disabled, loading, type, size }: { children: ReactNode; onClick?: () => void; variant?: 'primary' | 'ghost' | 'danger'; disabled?: boolean; loading?: boolean; type?: 'button' | 'submit'; size?: 'sm' | 'md' }) {
   const styles = {
     primary: 'bg-[color:var(--color-brand-500)] hover:bg-[color:var(--color-brand-600)] text-white',
     ghost: 'border border-black/10 hover:bg-black/[0.03] text-[color:var(--color-ink)]',
     danger: 'border border-red-200 text-red-700 hover:bg-red-50',
   }[variant];
+  const pad = size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3 py-1.5 text-sm';
   return (
-    <button type={type ?? 'button'} onClick={onClick} disabled={disabled}
-      className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors disabled:opacity-50 ${styles}`}>{children}</button>
+    <button type={type ?? 'button'} onClick={onClick} disabled={disabled || loading}
+      className={`inline-flex items-center gap-1.5 rounded-lg ${pad} font-semibold transition-colors disabled:opacity-50 ${styles}`}>
+      {loading && <span className="h-3 w-3 rounded-full border-2 border-current border-t-transparent animate-spin" />}
+      {children}
+    </button>
   );
+}
+
+export function Select({ value, onChange, children, className }: { value: string; onChange: (v: string) => void; children: ReactNode; className?: string }) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)}
+      className={`rounded-lg border border-black/10 bg-white px-3 py-2 text-sm ${className ?? ''}`}>{children}</select>
+  );
+}
+
+export function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return <textarea {...props} className={`w-full rounded-lg border border-black/10 px-3 py-2 text-sm ${props.className ?? ''}`} />;
+}
+
+export function Field({ label, children }: { label: string; children: ReactNode }) {
+  return <label className="block"><span className="block mb-1 text-xs font-semibold text-[color:var(--color-ink-soft)]">{label}</span>{children}</label>;
+}
+
+/** Inline notice/toast for action results. tone: ok|bad|info. */
+export function Notice({ tone = 'info', children }: { tone?: 'ok' | 'bad' | 'info'; children: ReactNode }) {
+  const t = { ok: 'bg-emerald-50 text-emerald-700 border-emerald-200', bad: 'bg-red-50 text-red-700 border-red-200', info: 'bg-[color:var(--color-brand-50)] text-[color:var(--color-brand-700)] border-black/5' }[tone];
+  return <div className={`rounded-lg border px-3 py-2 text-sm ${t}`}>{children}</div>;
 }
 
 export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {

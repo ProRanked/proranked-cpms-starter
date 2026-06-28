@@ -63,7 +63,7 @@ export interface TariffDetail extends TariffSummary {
   peakHoursStart?: string | null; peakHoursEnd?: string | null;
   peakMultiplier?: number | null; weekendMultiplier?: number | null;
 }
-export interface TariffAssignment { assignmentId: number; scope?: string; locationName?: string; chargerUid?: string; [k: string]: unknown }
+export interface TariffAssignment { assignmentId: string; scope?: string; locationName?: string; chargerUid?: string; [k: string]: unknown }
 
 export interface TxSummary {
   id: string; ocpiId?: string | null; sessionId?: string | null; chargerUid?: string | null;
@@ -107,3 +107,11 @@ export interface Limits { planCode: string; chargers: LimitDimension; connectors
 
 export interface Manufacturer { id: string; name: string; [k: string]: unknown }
 export interface ChargerModel { id: string; name: string; manufacturerId?: string; manufacturerName?: string; [k: string]: unknown }
+
+export interface IncreaseRequest { id: string; resource: string; currentTierLimit?: number | null; requestedLimit: number; status: string; reason?: string | null; createdAt: string; reviewedAt?: string | null; reviewNote?: string | null }
+export interface Settings { name?: string; contactEmail?: string; website?: string; country?: string; currency?: string; timezone?: string; branding?: Record<string, unknown>; billing?: Record<string, unknown>; [k: string]: unknown }
+export interface TeamMember { id: string; email?: string; name?: string; role?: string; [k: string]: unknown }
+export interface ApiKey { id: string; name?: string; prefix?: string; suffix?: string; scopes?: string[]; lastUsedAt?: string | null; createdAt?: string; [k: string]: unknown }
+export interface NetworkWallet { balance: number; currency: string; networkId: number; status: string; lastTransactionAt?: string | null }
+export interface FraudHold { driverId: string; email?: string | null; phoneVerified?: boolean; reason?: string | null; heldAt?: string | null; outstandingBalance?: number; [k: string]: unknown }
+export interface LoadBalancing { enabled?: boolean; strategy?: string; siteMaxPowerKw?: number; safetyMarginPct?: number; currentDrawKw?: number; allocatedKw?: number; evses?: Record<string, unknown>[]; [k: string]: unknown }

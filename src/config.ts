@@ -28,7 +28,14 @@ export const config: AppConfig = {
   oidcScopes: pick(
     rt.oidcScopes,
     env.VITE_OIDC_SCOPES,
-    'openid profile email offline_access cpms:read:chargers cpms:read:sessions cpms:write:chargers cpms:command:chargers',
+    // Full operator console scope set. CPO re-intersects with the operator's role, so requesting all is safe
+    // (a Viewer still can't write). Trim this in your fork to match the least-privilege your console needs.
+    'openid profile email offline_access ' +
+      'cpms:read:chargers cpms:read:connectors cpms:read:locations cpms:read:tariffs cpms:read:sessions ' +
+      'cpms:read:cdrs cpms:read:analytics cpms:read:settings cpms:read:webhooks cpms:read:events cpms:read:audit cpms:read:wallet ' +
+      'cpms:write:chargers cpms:write:connectors cpms:write:locations cpms:write:tariffs cpms:write:settings ' +
+      'cpms:write:webhooks cpms:write:team cpms:write:apikeys cpms:write:smartcharging cpms:write:loadbalancing ' +
+      'cpms:write:firmware cpms:write:diagnostics cpms:write:wallet cpms:command:chargers cpms:command:billing',
   ),
   oidcResource: pick(rt.oidcResource, env.VITE_OIDC_RESOURCE, 'https://api.proranked.cloud/cpms/v1'),
   // '' = same-origin (Vite dev proxy). Otherwise the absolute CPO host (cross-origin → exercises CORS).

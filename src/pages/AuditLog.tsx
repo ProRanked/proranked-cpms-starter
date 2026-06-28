@@ -1,113 +1,92 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useNetwork } from '../App';
-import { api, ApiError, when } from '../api';
-import type { AuditEntry } from '../types';
-import { PageHeader, Spinner, ErrorBox, Empty, Table, StatusPill } from '../components/ui';
+import { api, when } from '../api';
+import { useResource } from '../hooks';
+import { PageHeader, Spinner, ErrorBox, Empty, Table, StatusPill, Field, Input, Btn } from '../components/ui';
+
+const PAGE_SIZE = 50;
 
 export function AuditLog() {
   const network = useNetwork();
-  const [rows, setRows] = useState<AuditEntry[] | null>(null);
-  const [total, setTotal] = useState<number | undefined>(undefined);
-  const [err, setErr] = useState<ApiError | null>(null);
   const [category, setCategory] = useState('');
   const [action, setAction] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [page, setPage] = useState(1);
 
-  useEffect(() => {
-    if (!network) return;
-    let live = true;
-    setRows(null);
-    setErr(null);
-    setTotal(undefined);
-    api
-      .auditLog(network, { pageSize: 50 })
-      .then((r) => {
-        if (!live) return;
-        setRows(r.data);
-        setTotal(r.pagination?.total);
-      })
-      .catch((e) => {
-        if (!live) return;
-        if (e instanceof ApiError) setErr(e);
-        else setRows([]);
-      });
-    return () => {
-      live = false;
-    };
-  }, [network]);
-
-  const categories = useMemo(
-    () => Array.from(new Set((rows ?? []).map((r) => r.category).filter(Boolean))).sort(),
-    [rows],
-  );
-  const actions = useMemo(
-    () => Array.from(new Set((rows ?? []).map((r) => r.action).filter(Boolean))).sort(),
-    [rows],
+  // SERVER-side filtering + pagination — every filter/page change re-fetches with the new query.
+  const log = useResource(
+    () => api.auditLog(network, { category, action, from, to, page, pageSize: PAGE_SIZE }),
+    [network, category, action, from, to, page],
+    !!network,
   );
 
-  const filtered = useMemo(
-    () =>
-      (rows ?? []).filter(
-        (r) => (!category || r.category === category) && (!action || r.action === action),
-      ),
-    [rows, category, action],
-  );
+  // Resetting any filter returns to the first page (server paginates the filtered set).
+  const reset = (set: (v: string) => void) => (v: string) => { set(v); setPage(1); };
 
   if (!network) return <Empty msg="Select a network to continue." />;
 
-  const right = total !== undefined ? <span className="text-sm text-[color:var(--color-ink-soft)] mono">{total} entries</span> : undefined;
+  const pg = log.data?.pagination;
+  const total = pg?.total;
+  const pageNo = pg?.page ?? page;
+  const pageSize = pg?.pageSize ?? PAGE_SIZE;
+  const totalPages = pg?.totalPages ?? (total !== undefined ? Math.max(1, Math.ceil(total / pageSize)) : undefined);
+  const rows = log.data?.data ?? [];
+
+  const right = total !== undefined
+    ? <span className="text-sm text-[color:var(--color-ink-soft)] mono">{total.toLocaleString()} entries</span>
+    : undefined;
 
   return (
     <div>
       <PageHeader title="Audit Log" sub="GET /cpms/v1/audit-log" right={right} />
 
-      {err ? (
-        <ErrorBox error={err} />
-      ) : rows === null ? (
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <Field label="Category">
+          <Input value={category} onChange={(e) => reset(setCategory)(e.target.value)} placeholder="e.g. charger" />
+        </Field>
+        <Field label="Action">
+          <Input value={action} onChange={(e) => reset(setAction)(e.target.value)} placeholder="e.g. created" />
+        </Field>
+        <Field label="From">
+          <Input type="date" value={from} onChange={(e) => reset(setFrom)(e.target.value)} />
+        </Field>
+        <Field label="To">
+          <Input type="date" value={to} onChange={(e) => reset(setTo)(e.target.value)} />
+        </Field>
+      </div>
+
+      {log.error ? (
+        <ErrorBox error={log.error} />
+      ) : log.loading ? (
         <Spinner />
       ) : rows.length === 0 ? (
-        <Empty msg="No audit entries recorded for this network." />
+        <Empty msg={category || action || from || to ? 'No entries match the selected filters.' : 'No audit entries recorded for this network.'} />
       ) : (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="rounded-lg border border-black/10 px-3 py-2 text-sm bg-white"
-            >
-              <option value="">All categories</option>
-              {categories.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-            <select
-              value={action}
-              onChange={(e) => setAction(e.target.value)}
-              className="rounded-lg border border-black/10 px-3 py-2 text-sm bg-white"
-            >
-              <option value="">All actions</option>
-              {actions.map((a) => (
-                <option key={a} value={a}>{a}</option>
-              ))}
-            </select>
-          </div>
+          <Table
+            dense
+            columns={['When', 'Category', 'Action', 'Resource', 'Description', 'User', 'IP']}
+            rows={rows.map((r) => [
+              when(r.timestamp),
+              <StatusPill value={r.category} tone="info" />,
+              r.action,
+              <span className="mono">{r.resourceName || r.resourceId || '—'}</span>,
+              r.description,
+              r.userName || '—',
+              <span className="mono">{r.ipAddress || '—'}</span>,
+            ])}
+          />
 
-          {filtered.length === 0 ? (
-            <Empty msg="No entries match the selected filters." />
-          ) : (
-            <Table
-              dense
-              columns={['When', 'Category', 'Action', 'Resource', 'Description', 'User', 'IP']}
-              rows={filtered.map((r) => [
-                when(r.timestamp),
-                <StatusPill value={r.category} tone="info" />,
-                r.action,
-                <span className="mono">{r.resourceName || r.resourceId || '—'}</span>,
-                r.description,
-                r.userName || '—',
-                <span className="mono">{r.ipAddress || '—'}</span>,
-              ])}
-            />
-          )}
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm text-[color:var(--color-ink-soft)] mono">
+              Page {pageNo}{totalPages !== undefined ? ` of ${totalPages}` : ''}
+            </span>
+            <div className="flex items-center gap-2">
+              <Btn size="sm" disabled={pageNo <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>← Prev</Btn>
+              <Btn size="sm" disabled={totalPages !== undefined ? pageNo >= totalPages : rows.length < pageSize} onClick={() => setPage((p) => p + 1)}>Next →</Btn>
+            </div>
+          </div>
         </div>
       )}
     </div>

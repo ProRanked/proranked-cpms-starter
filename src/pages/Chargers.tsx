@@ -1,64 +1,55 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useNetwork } from '../App';
 import { api, ApiError, f } from '../api';
-import type { ChargerSummary } from '../types';
-import { PageHeader, Spinner, ErrorBox, Empty, Table, StatusPill } from '../components/ui';
+import { useResource } from '../hooks';
+import {
+  PageHeader, Spinner, ErrorBox, Empty, Table, StatusPill,
+  Btn, Modal, Field, Input, Select, Notice,
+} from '../components/ui';
 
 const ALL = 'All';
 
 export function Chargers() {
   const network = useNetwork();
-  const [chargers, setChargers] = useState<ChargerSummary[]>([]);
-  const [err, setErr] = useState<ApiError | null>(null);
-  const [loading, setLoading] = useState(true);
+  const chargers = useResource(() => api.chargers(network), [network], !!network);
+  const list = chargers.data?.data ?? [];
+
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<string>(ALL);
-
-  useEffect(() => {
-    if (!network) {
-      setLoading(false);
-      return;
-    }
-    let live = true;
-    setLoading(true);
-    setErr(null);
-    api
-      .chargers(network)
-      .then((r) => { if (live) setChargers(r.data); })
-      .catch((e) => { if (live && e instanceof ApiError) setErr(e); })
-      .finally(() => { if (live) setLoading(false); });
-    return () => { live = false; };
-  }, [network]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [okMsg, setOkMsg] = useState<string | null>(null);
 
   // Distinct statuses with counts, computed over the full unfiltered set.
   const statusCounts = useMemo(() => {
     const m = new Map<string, number>();
-    for (const c of chargers) {
+    for (const c of list) {
       const s = c.status || 'unknown';
       m.set(s, (m.get(s) ?? 0) + 1);
     }
     return [...m.entries()].sort((a, b) => b[1] - a[1]);
-  }, [chargers]);
+  }, [list]);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return chargers.filter((c) => {
+    return list.filter((c) => {
       if (status !== ALL && (c.status || 'unknown') !== status) return false;
       if (!needle) return true;
       return [c.uid, c.serialNumber, c.id]
         .some((v) => (v ?? '').toString().toLowerCase().includes(needle));
     });
-  }, [chargers, q, status]);
+  }, [list, q, status]);
 
   if (!network) {
     return (
       <>
         <PageHeader title="Chargers" sub="GET /cpms/v1/chargers · X-Network-Id" />
-        <Empty msg="Select a network to continue." />
+        <Empty msg="Select a network." />
       </>
     );
   }
+
+  const addBtn = <Btn variant="primary" onClick={() => { setOkMsg(null); setShowAdd(true); }}>Add charger</Btn>;
 
   const chip = (label: string, count: number, active: boolean) => (
     <button
@@ -78,15 +69,22 @@ export function Chargers() {
     <>
       <PageHeader
         title="Chargers"
-        sub="GET /cpms/v1/chargers · X-Network-Id"
-        right={<span className="text-sm text-[color:var(--color-ink-soft)]">{chargers.length} total</span>}
+        sub="GET /cpms/v1/chargers · POST /cpms/v1/chargers"
+        right={
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-[color:var(--color-ink-soft)]">{list.length} total</span>
+            {addBtn}
+          </div>
+        }
       />
 
-      {loading ? (
+      {okMsg && <div className="mb-4"><Notice tone="ok">{okMsg}</Notice></div>}
+
+      {chargers.loading ? (
         <Spinner />
-      ) : err ? (
-        <ErrorBox error={err} />
-      ) : chargers.length === 0 ? (
+      ) : chargers.error ? (
+        <ErrorBox error={chargers.error} />
+      ) : list.length === 0 ? (
         <Empty msg="No chargers in this network yet." />
       ) : (
         <>
@@ -98,7 +96,7 @@ export function Chargers() {
               className="w-64 max-w-full rounded-lg border border-black/10 px-3 py-2 text-sm"
             />
             <div className="flex flex-wrap items-center gap-2">
-              {chip(ALL, chargers.length, status === ALL)}
+              {chip(ALL, list.length, status === ALL)}
               {statusCounts.map(([s, n]) => chip(s, n, status === s))}
             </div>
           </div>
@@ -125,6 +123,110 @@ export function Chargers() {
           )}
         </>
       )}
+
+      {showAdd && (
+        <AddChargerModal
+          network={network}
+          onClose={() => setShowAdd(false)}
+          onCreated={(msg) => { setOkMsg(msg); setShowAdd(false); chargers.reload(); }}
+        />
+      )}
     </>
+  );
+}
+
+function AddChargerModal({ network, onClose, onCreated }: {
+  network: string;
+  onClose: () => void;
+  onCreated: (msg: string) => void;
+}) {
+  const models = useResource(() => api.chargerModels(network), [network], !!network);
+  const locations = useResource(() => api.locations(network), [network], !!network);
+
+  const [serialNumber, setSerialNumber] = useState('');
+  const [modelUuid, setModelUuid] = useState('');
+  const [locationUuid, setLocationUuid] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const modelList = models.data?.data ?? [];
+  const locationList = locations.data?.data ?? [];
+  const canSubmit = serialNumber.trim() !== '' && modelUuid !== '' && !busy;
+
+  const submit = async () => {
+    setErr(null);
+    setBusy(true);
+    try {
+      await api.createCharger(network, {
+        serialNumber: serialNumber.trim(),
+        modelUuid,
+        locationUuid: locationUuid || undefined,
+      });
+      onCreated(`Charger ${serialNumber.trim()} created.`);
+    } catch (e) {
+      if (e instanceof ApiError) {
+        setErr(e.status === 403
+          ? `${e.message} — needs cpms:write:chargers (may be off by default).`
+          : `${e.code} (${e.status}): ${e.message}`);
+      } else {
+        setErr(String(e));
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal title="Add charger" onClose={onClose}>
+      <div className="space-y-4">
+        {err && <Notice tone="bad">{err}</Notice>}
+
+        <Field label="Serial number">
+          <Input
+            value={serialNumber}
+            onChange={(e) => setSerialNumber(e.target.value)}
+            placeholder="e.g. SN-00123-AB"
+            className="mono"
+          />
+        </Field>
+
+        <Field label="Model">
+          {models.loading ? (
+            <Spinner />
+          ) : models.error ? (
+            <Notice tone="bad">{models.error.message}</Notice>
+          ) : (
+            <Select value={modelUuid} onChange={setModelUuid} className="w-full">
+              <option value="">Select a model…</option>
+              {modelList.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}{m.manufacturerName ? ` · ${m.manufacturerName}` : ''}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+
+        <Field label="Location (optional)">
+          {locations.loading ? (
+            <Spinner />
+          ) : locations.error ? (
+            <Notice tone="bad">{locations.error.message}</Notice>
+          ) : (
+            <Select value={locationUuid} onChange={setLocationUuid} className="w-full">
+              <option value="">Unassigned</option>
+              {locationList.map((l) => (
+                <option key={l.id} value={l.id}>{l.name}</option>
+              ))}
+            </Select>
+          )}
+        </Field>
+
+        <div className="flex justify-end gap-2 pt-1">
+          <Btn onClick={onClose} disabled={busy}>Cancel</Btn>
+          <Btn variant="primary" onClick={submit} loading={busy} disabled={!canSubmit}>Create charger</Btn>
+        </div>
+      </div>
+    </Modal>
   );
 }
