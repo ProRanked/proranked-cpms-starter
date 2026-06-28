@@ -66,7 +66,7 @@ export function Sessions() {
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-sm"
+                className="rounded-lg border border-black/10 bg-white px-3 py-1.5 text-sm"
               >
                 <option value="all">All statuses</option>
                 {statuses.map((s) => (
