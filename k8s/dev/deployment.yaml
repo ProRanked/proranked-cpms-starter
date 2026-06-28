@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cpms-starter
+  namespace: phevnix-v2
+  labels: { app: cpms-starter }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: cpms-starter }
+  template:
+    metadata:
+      labels: { app: cpms-starter }
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: arm64
+      containers:
+        - name: cpms-starter
+          image: ghcr.io/proranked/proranked-cpms-starter:latest-arm64
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: runtime-config
+              mountPath: /usr/share/nginx/html/config.js
+              subPath: config.js
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 10m, memory: 24Mi }
+            limits: { cpu: 200m, memory: 96Mi }
+      volumes:
+        - name: runtime-config
+          configMap:
+            name: cpms-starter-config
+      imagePullSecrets:
+        - name: ghcr-pull

@@ -1,0 +1,45 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* ProRanked blue */
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-300: #7cb8ff;
+  --color-brand-500: #0a84ff;
+  --color-brand-600: #0070e0;
+  --color-brand-700: #0059b3;
+  --color-ink: #0b1220;
+  --color-ink-soft: #5b6b7e;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(900px 500px at 88% -8%, rgba(10, 132, 255, 0.10), transparent 60%),
+    radial-gradient(700px 420px at -6% 8%, rgba(10, 132, 255, 0.06), transparent 55%),
+    #f7f9fc;
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* thin scrollbar for the token panel */
+.scroll-thin::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: rgba(10, 132, 255, 0.25);
+  border-radius: 8px;
+}

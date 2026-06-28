@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cpms-starter
+  namespace: phevnix-v2
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 10m
+spec:
+  ingressClassName: nginx
+  rules:
+    # Lab host served via the *.phevnix.cloud Cloudflare Tunnel. Prod would be e.g. console.proranked.com.
+    - host: console.phevnix.cloud
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: cpms-starter
+                port:
+                  number: 80

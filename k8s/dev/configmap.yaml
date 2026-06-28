@@ -1,0 +1,19 @@
+# Runtime config mounted over /config.js — re-point identity/API without rebuilding the image.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cpms-starter-config
+  namespace: phevnix-v2
+data:
+  config.js: |
+    window.PRORANKED_CONFIG = {
+      oidcAuthority: 'https://id-lab.phevnix.cloud',
+      oidcClientId: 'proranked-cpms-spa',
+      oidcScopes:
+        'openid profile email offline_access ' +
+        'cpms:read:chargers cpms:read:connectors cpms:read:locations cpms:read:tariffs ' +
+        'cpms:read:sessions cpms:read:cdrs cpms:read:analytics cpms:read:settings ' +
+        'cpms:write:chargers cpms:write:tariffs cpms:command:chargers',
+      oidcResource: 'https://api.proranked.cloud/cpms/v1',
+      cpmsApiBase: 'https://cpo.phevnix.cloud',
+    };
