@@ -14,6 +14,6 @@ data:
         'cpms:read:chargers cpms:read:connectors cpms:read:locations cpms:read:tariffs ' +
         'cpms:read:sessions cpms:read:cdrs cpms:read:analytics cpms:read:settings ' +
         'cpms:write:chargers cpms:write:tariffs cpms:command:chargers',
-      oidcResource: 'https://api.proranked.cloud/cpms/v1',
+      oidcResource: 'https://api.phevnix.cloud/cpms/v1',
       cpmsApiBase: 'https://cpo.phevnix.cloud',
     };

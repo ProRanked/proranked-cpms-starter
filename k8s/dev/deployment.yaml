@@ -36,4 +36,4 @@ spec:
           configMap:
             name: cpms-starter-config
       imagePullSecrets:
-        - name: ghcr-pull
+        - name: ghcr-secret
