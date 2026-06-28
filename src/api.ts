@@ -1,9 +1,15 @@
 import { config } from './config';
 import { getUser, accessTokenOf } from './auth';
+import type {
+  Context, NetworkSummary, ChargerSummary, ChargerDetail, ConnectorSummary, SessionSummary, SessionDetail,
+  MeterValue, SessionEvent, LocationSummary, LocationDetail, TariffSummary, TariffDetail, TariffAssignment,
+  TxSummary, Kpis, Uptime, AnalyticsRollup, ChargerCommand, DeviceModelVar, Certificate, ChargingProfile,
+  Webhook, WebhookDelivery, AuditEntry, Limits, Paged,
+} from './types';
 
 // Thin client for the public ProRanked CPMS API (/api/cpms/v1), called DIRECTLY from the browser with the
-// operator's bearer token. The selected network is sent as X-Network-Id (a UUID) — CPO scopes the request
-// to exactly that network (an AllNetworks/operator caller must name one). No secret, no backend.
+// operator's bearer token + X-Network-Id. No backend, no secret. Handles both server envelopes:
+//   single: {data, success, timestamp}     list: {data, pagination?, count?, success, timestamp}
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string) {
@@ -11,7 +17,9 @@ export class ApiError extends Error {
   }
 }
 
-async function call<T>(path: string, opts: { networkId?: string; method?: string; body?: unknown } = {}): Promise<T> {
+type Opts = { networkId?: string; method?: string; body?: unknown; query?: Record<string, string | number | undefined> };
+
+async function raw(path: string, opts: Opts = {}): Promise<{ json: any; res: Response }> {
   const user = await getUser();
   const token = accessTokenOf(user);
   if (!token) throw new ApiError(401, 'not_authenticated', 'Sign in first.');
@@ -20,76 +28,128 @@ async function call<T>(path: string, opts: { networkId?: string; method?: string
   if (opts.networkId) headers['X-Network-Id'] = opts.networkId;
   if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
 
-  const res = await fetch(`${config.cpmsApiBase}/api/cpms/v1${path}`, {
+  let qs = '';
+  if (opts.query) {
+    const p = new URLSearchParams();
+    for (const [k, v] of Object.entries(opts.query)) if (v !== undefined && v !== '') p.set(k, String(v));
+    qs = p.toString() ? `?${p}` : '';
+  }
+
+  const res = await fetch(`${config.cpmsApiBase}/api/cpms/v1${path}${qs}`, {
     method: opts.method ?? 'GET',
     headers,
     body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
   });
-
   const text = await res.text();
-  let parsed: unknown = undefined;
-  try {
-    parsed = text ? JSON.parse(text) : undefined;
-  } catch {
-    /* non-JSON */
-  }
-
+  let json: any;
+  try { json = text ? JSON.parse(text) : undefined; } catch { json = undefined; }
   if (!res.ok) {
-    const p = parsed as { error?: string; code?: string; message?: string; hint?: string } | undefined;
-    throw new ApiError(res.status, p?.error ?? p?.code ?? `http_${res.status}`, p?.message ?? p?.hint ?? (text || res.statusText));
+    throw new ApiError(res.status, json?.error ?? json?.code ?? `http_${res.status}`, json?.message ?? json?.hint ?? (text || res.statusText));
   }
-
-  // Unwrap the CPO {success,data} envelope when present.
-  const env = parsed as { success?: boolean; data?: T } | undefined;
-  if (env && typeof env === 'object' && 'success' in env && 'data' in env) return env.data as T;
-  return parsed as T;
+  return { json, res };
 }
 
-// ── Types (lenient — the API is the source of truth; these are display shapes) ────────────────────────
-export interface NetworkInfo {
-  id?: string;
-  networkId?: string;
-  uuid?: string;
-  name?: string;
-  role?: string;
-  [k: string]: unknown;
+// unwrap single {data} → T (or the body if not enveloped)
+async function get<T>(path: string, opts: Opts = {}): Promise<T> {
+  const { json } = await raw(path, opts);
+  return (json && typeof json === 'object' && 'data' in json) ? (json.data as T) : (json as T);
 }
-export interface PagedResult<T> {
-  data?: T[];
-  items?: T[];
-  totalCount?: number;
-  page?: number;
-  [k: string]: unknown;
-}
-export type Charger = Record<string, unknown>;
-export type Session = Record<string, unknown>;
-
-function rows<T>(r: PagedResult<T> | T[] | undefined): T[] {
-  if (!r) return [];
-  if (Array.isArray(r)) return r;
-  return r.items ?? r.data ?? [];
+// list → {data, pagination}
+async function list<T>(path: string, opts: Opts = {}): Promise<Paged<T>> {
+  const { json } = await raw(path, opts);
+  if (Array.isArray(json)) return { data: json };
+  return { data: (json?.data ?? []) as T[], pagination: json?.pagination };
 }
 
 export const api = {
-  /** The signed-in operator + the networks they can act on (drives the network picker). */
-  me: () => call<Record<string, unknown>>('/me'),
-  networks: async (): Promise<NetworkInfo[]> => rows(await call<PagedResult<NetworkInfo>>('/networks')),
-  chargers: async (networkId: string): Promise<Charger[]> => rows(await call<PagedResult<Charger>>('/chargers', { networkId })),
-  sessions: async (networkId: string): Promise<Session[]> => rows(await call<PagedResult<Session>>('/sessions', { networkId })),
-  analytics: (networkId: string) => call<Record<string, unknown>>('/analytics/summary', { networkId }),
-  remoteStart: (networkId: string, chargerUuid: string, body: unknown) =>
-    call<unknown>(`/chargers/${chargerUuid}/remote-start`, { networkId, method: 'POST', body }),
-  remoteStop: (networkId: string, chargerUuid: string, body: unknown) =>
-    call<unknown>(`/chargers/${chargerUuid}/remote-stop`, { networkId, method: 'POST', body }),
+  // context
+  me: () => get<Context>('/me'),
+  networks: () => list<NetworkSummary>('/networks'),
+  usage: (n: string, days = 30) => get<any>('/usage', { networkId: n, query: { days } }),
+  limits: (n: string) => get<Limits>('/limits', { networkId: n }),
+
+  // chargers
+  chargers: (n: string, q?: Record<string, string | number | undefined>) => list<ChargerSummary>('/chargers', { networkId: n, query: q }),
+  charger: (n: string, uuid: string) => get<ChargerDetail>(`/chargers/${uuid}`, { networkId: n }),
+  connectorStatus: (n: string, uuid: string) => get<ConnectorSummary & { chargerOnline: boolean }>(`/connectors/${uuid}/status`, { networkId: n }),
+  chargerConfig: (n: string, uuid: string) => get<any>(`/chargers/${uuid}/configuration`, { networkId: n }),
+  chargerCommands: (n: string, uuid: string) => list<ChargerCommand>(`/chargers/${uuid}/commands`, { networkId: n }),
+  chargerProfiles: (n: string, uuid: string) => list<ChargingProfile>(`/chargers/${uuid}/charging-profiles`, { networkId: n }),
+  deviceModel: (n: string, uuid: string) => list<DeviceModelVar>(`/chargers/${uuid}/device-model`, { networkId: n }),
+  monitoringEvents: (n: string, uuid: string) => list<any>(`/chargers/${uuid}/monitoring/events`, { networkId: n }),
+  certificates: (n: string, uuid: string) => list<Certificate>(`/chargers/${uuid}/certificates`, { networkId: n }),
+  diagnostics: (n: string, uuid: string) => get<any>(`/chargers/${uuid}/diagnostics`, { networkId: n }),
+  firmwareStatus: (n: string, uuid: string) => get<any>(`/chargers/${uuid}/firmware/status`, { networkId: n }),
+  // charger commands (live OCPP — operator action)
+  remoteStart: (n: string, uuid: string, body: unknown) => raw(`/chargers/${uuid}/remote-start`, { networkId: n, method: 'POST', body }),
+  remoteStop: (n: string, uuid: string, body: unknown) => raw(`/chargers/${uuid}/remote-stop`, { networkId: n, method: 'POST', body }),
+  reboot: (n: string, uuid: string, body: unknown) => raw(`/chargers/${uuid}/reboot`, { networkId: n, method: 'POST', body }),
+  unlock: (n: string, uuid: string, body: unknown) => raw(`/chargers/${uuid}/unlock-connector`, { networkId: n, method: 'POST', body }),
+  changeAvailability: (n: string, uuid: string, body: unknown) => raw(`/chargers/${uuid}/change-availability`, { networkId: n, method: 'POST', body }),
+  triggerMessage: (n: string, uuid: string, body: unknown) => raw(`/chargers/${uuid}/trigger-message`, { networkId: n, method: 'POST', body }),
+
+  // locations
+  locations: (n: string) => list<LocationSummary>('/locations', { networkId: n }),
+  location: (n: string, id: string) => get<LocationDetail>(`/locations/${id}`, { networkId: n }),
+
+  // sessions
+  sessions: (n: string, q?: Record<string, string | number | undefined>) => list<SessionSummary>('/sessions', { networkId: n, query: q }),
+  session: (n: string, id: string) => get<SessionDetail>(`/sessions/${id}`, { networkId: n }),
+  meterValues: (n: string, id: string) => get<MeterValue[]>(`/sessions/${id}/meter-values`, { networkId: n }).then((d) => (Array.isArray(d) ? d : [])),
+  sessionEvents: (n: string, id: string) => list<SessionEvent>(`/sessions/${id}/events`, { networkId: n }),
+  forceStop: (n: string, id: string, body: unknown) => raw(`/sessions/${id}/force-stop`, { networkId: n, method: 'POST', body }),
+  refund: (n: string, id: string, body: unknown) => raw(`/sessions/${id}/refund`, { networkId: n, method: 'POST', body }),
+
+  // tariffs
+  tariffs: (n: string) => list<TariffSummary>('/tariffs', { networkId: n }),
+  tariff: (n: string, id: string) => get<TariffDetail>(`/tariffs/${id}`, { networkId: n }),
+  tariffAssignments: (n: string, id: string) => list<TariffAssignment>(`/tariffs/${id}/assignments`, { networkId: n }),
+
+  // transactions / cdrs
+  transactions: (n: string, q?: Record<string, string | number | undefined>) => list<TxSummary>('/transactions', { networkId: n, query: q }),
+  transaction: (n: string, id: string) => get<any>(`/transactions/${id}`, { networkId: n }),
+
+  // analytics
+  kpis: (n: string, q?: Record<string, string | undefined>) => get<Kpis>('/analytics/kpis', { networkId: n, query: q }),
+  uptime: (n: string) => get<Uptime>('/analytics/uptime', { networkId: n }),
+  revenue: (n: string, q?: Record<string, string | undefined>) => get<AnalyticsRollup>('/analytics/revenue', { networkId: n, query: q }),
+  energy: (n: string, q?: Record<string, string | undefined>) => get<AnalyticsRollup>('/analytics/energy', { networkId: n, query: q }),
+  sessionsRollup: (n: string, q?: Record<string, string | undefined>) => get<AnalyticsRollup>('/analytics/sessions', { networkId: n, query: q }),
+  utilization: (n: string) => get<AnalyticsRollup>('/analytics/utilization', { networkId: n }),
+
+  // webhooks
+  webhooks: (n: string) => list<Webhook>('/webhooks', { networkId: n }),
+  webhookEventTypes: (n: string) => get<any>('/webhooks/event-types', { networkId: n }),
+  webhookDeliveries: (n: string, id: string) => list<WebhookDelivery>(`/webhooks/${id}/deliveries`, { networkId: n }),
+  createWebhook: (n: string, body: unknown) => raw('/webhooks', { networkId: n, method: 'POST', body }),
+  deleteWebhook: (n: string, id: string) => raw(`/webhooks/${id}`, { networkId: n, method: 'DELETE' }),
+  testWebhook: (n: string, id: string) => raw(`/webhooks/${id}/test`, { networkId: n, method: 'POST' }),
+
+  // audit
+  auditLog: (n: string, q?: Record<string, string | number | undefined>) => list<AuditEntry>('/audit-log', { networkId: n, query: q }),
 };
 
-// Helpers for rendering loosely-typed rows.
-export const field = (o: Record<string, unknown>, ...keys: string[]): string => {
-  for (const k of keys) {
-    const v = o[k];
-    if (v !== undefined && v !== null && v !== '') return String(v);
-  }
+// Render helpers for loosely-typed rows.
+export const f = (o: Record<string, unknown> | null | undefined, ...keys: string[]): string => {
+  if (!o) return '—';
+  for (const k of keys) { const v = o[k]; if (v !== undefined && v !== null && v !== '') return String(v); }
   return '—';
 };
-export const networkUuid = (n: NetworkInfo): string =>
-  String(n.uuid ?? n.networkId ?? n.id ?? '');
+export const money = (v?: number | null, ccy = 'USD') =>
+  v === null || v === undefined ? '—' : new Intl.NumberFormat(undefined, { style: 'currency', currency: ccy || 'USD' }).format(v);
+export const num = (v?: number | null, d = 2) => (v === null || v === undefined ? '—' : v.toFixed(d));
+export const when = (v?: string | null) => (v ? new Date(v).toLocaleString() : '—');
+export const ago = (v?: string | null) => {
+  if (!v) return '—';
+  const s = (Date.now() - new Date(v).getTime()) / 1000;
+  if (s < 60) return `${Math.round(s)}s ago`;
+  if (s < 3600) return `${Math.round(s / 60)}m ago`;
+  if (s < 86400) return `${Math.round(s / 3600)}h ago`;
+  return `${Math.round(s / 86400)}d ago`;
+};
+export const dur = (a?: string | null, b?: string | null) => {
+  if (!a) return '—';
+  const ms = (b ? new Date(b).getTime() : Date.now()) - new Date(a).getTime();
+  const m = Math.floor(ms / 60000);
+  return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60}m`;
+};
