@@ -1,4 +1,4 @@
-// Wire shapes for the public ProRanked CPMS API (/api/cpms/v1). Field names/types mirror the server DTOs
+// Wire shapes for the public ProRanked CPMS API (/cpms/v1). Field names/types mirror the server DTOs
 // (CpmsResponseModels.cs et al). Lenient where the server is loosely typed (analytics rollups).
 
 export interface Paged<T> {

@@ -8,7 +8,7 @@ import type {
   LoadBalancing, Manufacturer, ChargerModel, IncreaseRequest,
 } from './types';
 
-// Browser-direct client for the public ProRanked CPMS API (/api/cpms/v1): operator bearer token + X-Network-Id,
+// Browser-direct client for the public ProRanked CPMS API (/cpms/v1): operator bearer token + X-Network-Id,
 // no backend, no secret. Handles the {data, pagination?, count?, success} envelope. See GAP-ANALYSIS.md for which
 // capabilities are API-backed; pages name their endpoint in the header sub-line.
 
@@ -32,7 +32,7 @@ async function raw(path: string, opts: Opts = {}): Promise<any> {
   const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
   if (opts.networkId) headers['X-Network-Id'] = opts.networkId;
   if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
-  const res = await fetch(`${config.cpmsApiBase}/api/cpms/v1${path}${qstr(opts.query)}`, {
+  const res = await fetch(`${config.cpmsApiBase}/cpms/v1${path}${qstr(opts.query)}`, {
     method: opts.method ?? 'GET', headers,
     body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
   });
@@ -50,7 +50,7 @@ async function download(path: string, filename: string, o: Opts = {}) {
   if (!token) throw new ApiError(401, 'not_authenticated', 'Sign in first.');
   const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
   if (o.networkId) headers['X-Network-Id'] = o.networkId;
-  const res = await fetch(`${config.cpmsApiBase}/api/cpms/v1${path}${qstr(o.query)}`, { headers });
+  const res = await fetch(`${config.cpmsApiBase}/cpms/v1${path}${qstr(o.query)}`, { headers });
   if (!res.ok) throw new ApiError(res.status, `http_${res.status}`, res.statusText);
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
@@ -194,7 +194,7 @@ export const api = {
   streamEvents: async (n: string, onEvent: (e: { type: string; data: any }) => void, signal: AbortSignal) => {
     const user = await getUser(); const token = accessTokenOf(user);
     if (!token) throw new ApiError(401, 'not_authenticated', 'Sign in first.');
-    const res = await fetch(`${config.cpmsApiBase}/api/cpms/v1/events/stream`, {
+    const res = await fetch(`${config.cpmsApiBase}/cpms/v1/events/stream`, {
       headers: { Authorization: `Bearer ${token}`, 'X-Network-Id': n, Accept: 'text/event-stream' }, signal,
     });
     if (!res.ok || !res.body) throw new ApiError(res.status, `http_${res.status}`, 'stream failed');

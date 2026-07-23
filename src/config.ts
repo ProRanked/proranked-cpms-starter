@@ -23,7 +23,7 @@ function pick(runtime: string | undefined, build: string | undefined, fallback =
 }
 
 export const config: AppConfig = {
-  oidcAuthority: pick(rt.oidcAuthority, env.VITE_OIDC_AUTHORITY, 'https://id-lab.phevnix.cloud'),
+  oidcAuthority: pick(rt.oidcAuthority, env.VITE_OIDC_AUTHORITY, 'https://id.proranked.com'),
   oidcClientId: pick(rt.oidcClientId, env.VITE_OIDC_CLIENT_ID, 'proranked-cpms-spa'),
   oidcScopes: pick(
     rt.oidcScopes,
@@ -37,7 +37,7 @@ export const config: AppConfig = {
       'cpms:write:webhooks cpms:write:team cpms:write:apikeys cpms:write:smartcharging cpms:write:loadbalancing ' +
       'cpms:write:firmware cpms:write:diagnostics cpms:write:wallet cpms:command:chargers cpms:command:billing',
   ),
-  oidcResource: pick(rt.oidcResource, env.VITE_OIDC_RESOURCE, 'https://api.proranked.cloud/cpms/v1'),
+  oidcResource: pick(rt.oidcResource, env.VITE_OIDC_RESOURCE, 'https://api.proranked.com/cpms/v1'),
   // '' = same-origin (Vite dev proxy). Otherwise the absolute CPO host (cross-origin → exercises CORS).
   cpmsApiBase: pick(rt.cpmsApiBase, env.VITE_CPMS_API_BASE, ''),
 };

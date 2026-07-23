@@ -2,7 +2,7 @@ import { UserManager, WebStorageStateStore, type User } from 'oidc-client-ts';
 import { config } from './config';
 
 // Browser-side OAuth 2.1 Auth Code + PKCE against ProRanked Identity. No client secret (public client),
-// no backend. The resulting role-scoped operator access token is sent straight to /api/cpms/v1.
+// no backend. The resulting role-scoped operator access token is sent straight to /cpms/v1.
 //
 // RFC 8707 resource: we request the CPMS resource so Identity mints a token whose `aud` matches CPO's
 // CpmsResourceServer — that per-family audience binding is what stops an eMSP/driver token being replayed
