@@ -34,6 +34,14 @@ See **[GAP-ANALYSIS.md](./GAP-ANALYSIS.md)** for exactly what the public `/cpms/
   in these two places to re-brand the whole console.
 - **`src/auth.ts` + `src/config.ts`** — PKCE auth + runtime/build-time config.
 
+## Building with an AI agent
+
+- **[PROMPTS.md](./PROMPTS.md)** — copy-paste prompts (re-brand, trim to the pages you need, add a
+  page, live charger control, webhooks) for Claude Code or Cursor.
+- **[CLAUDE.md](./CLAUDE.md)** — the contract an agent should read first: base URL, how scopes get
+  intersected with the operator's role, which scopes are elevated, and what *not* to do.
+  Auto-loaded by Claude Code.
+
 ## Re-skin in Lovable / Claude-design
 
 1. Keep `src/api.ts` + `src/hooks.ts` as-is (they're your data layer).
