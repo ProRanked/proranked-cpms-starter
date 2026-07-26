@@ -1,5 +1,8 @@
 // Dependency-free inline-SVG charts — keeps the starter zero-dep + fork-friendly.
-const BRAND = '#0a84ff';
+// Colours come from src/tokens.ts so a re-brand stays a one-file change. These used to be a
+// private BRAND const, which meant every chart silently kept the old colour after a re-skin.
+import { tokens } from '../tokens';
+const BRAND = tokens.brand;
 
 export function AreaChart({ data, height = 160, color = BRAND, fmt }: { data: { x: string; y: number }[]; height?: number; color?: string; fmt?: (n: number) => string }) {
   if (!data.length) return <Placeholder height={height} />;
@@ -106,5 +109,5 @@ function Placeholder({ height }: { height: number }) {
 }
 
 export const STATUS_COLORS: Record<string, string> = {
-  available: '#10b981', charging: '#0a84ff', offline: '#ef4444', faulted: '#ef4444', preparing: '#f59e0b', other: '#94a3b8',
+  available: tokens.ok, charging: tokens.brand, offline: '#ef4444', faulted: '#ef4444', preparing: '#f59e0b', other: '#94a3b8',
 };

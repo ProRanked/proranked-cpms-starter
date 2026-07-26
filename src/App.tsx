@@ -111,7 +111,7 @@ function SignIn() {
   return (
     <div className="min-h-screen grid place-items-center px-6">
       <div className="w-full max-w-md">
-        <div className="rounded-3xl border border-black/5 bg-white/80 backdrop-blur shadow-[0_20px_60px_-20px_rgba(10,132,255,0.35)] p-9">
+        <div className="rounded-3xl border border-black/5 bg-white/80 backdrop-blur shadow-[0_20px_60px_-20px_rgba(var(--brand-rgb),0.35)] p-9">
           <Logo />
           <h1 className="mt-6 text-2xl font-extrabold tracking-tight">CPMS Console</h1>
           <p className="mt-2 text-[15px] leading-relaxed text-[color:var(--color-ink-soft)]">
