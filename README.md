@@ -32,8 +32,9 @@ See **[GAP-ANALYSIS.md](./GAP-ANALYSIS.md)** for exactly what the public `/cpms/
 - **`src/components/charts.tsx`** — dependency-free inline-SVG charts (Area/Bar/Donut/LineCurve).
 - **`src/tokens.ts` + `src/index.css`** — design tokens (brand colour, ink, status colours, fonts).
   Change the brand in **three** places, all adjacent: `tokens.brand` / `tokens.brandDim` in `tokens.ts`,
-  the `--color-brand-*` ramp in the `@theme` block, and `--brand-rgb` (the RGB channels the page
-  gradients, glow shadows and scrollbar tint with). Charts read `tokens.ts`, so they follow automatically.
+  the `--color-brand-*` ramp in the `@theme` block, and `--brand-rgb` in that same block (the RGB
+  channels the page gradients, glow shadow and scrollbar tint with — a hex var can't be alpha-composited,
+  which is why this one is separate). Charts read `tokens.ts`, so they follow automatically.
   Don't forget the favicon data-URI in `index.html` and the `<title>`.
 - **`src/auth.ts` + `src/config.ts`** — PKCE auth + runtime/build-time config.
 

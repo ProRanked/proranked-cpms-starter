@@ -4,6 +4,10 @@
   --font-sans: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
+  /* Brand. --brand-rgb carries the same colour as --color-brand-500 in RGB channels, because the
+     page gradients / glow shadow / scrollbar tint with alpha and a hex var can't be alpha-composited.
+     Change BOTH when re-branding. */
+  --brand-rgb: 10, 132, 255;
   /* ProRanked blue */
   --color-brand-50: #eff6ff;
   --color-brand-100: #dbeafe;
@@ -23,8 +27,8 @@ body {
   margin: 0;
   font-family: var(--font-sans);
   background:
-    radial-gradient(900px 500px at 88% -8%, rgba(10, 132, 255, 0.10), transparent 60%),
-    radial-gradient(700px 420px at -6% 8%, rgba(10, 132, 255, 0.06), transparent 55%),
+    radial-gradient(900px 500px at 88% -8%, rgba(var(--brand-rgb), 0.10), transparent 60%),
+    radial-gradient(700px 420px at -6% 8%, rgba(var(--brand-rgb), 0.06), transparent 55%),
     #f7f9fc;
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
@@ -40,6 +44,6 @@ body {
   width: 8px;
 }
 .scroll-thin::-webkit-scrollbar-thumb {
-  background: rgba(10, 132, 255, 0.25);
+  background: rgba(var(--brand-rgb), 0.25);
   border-radius: 8px;
 }
