@@ -19,6 +19,19 @@ Tenancy    X-Network-Id: <network uuid>
 Config is in `public/config.js` (runtime, overwritable without a rebuild) with `.env` `VITE_*`
 fallbacks — see `.env.example`. The OAuth client is **public/PKCE**: `oidcClientId` is not a secret.
 
+## Before deploying anywhere but localhost
+
+This app derives `redirect_uri` from `window.location.origin`. The default `VITE_OIDC_CLIENT_ID`
+(`proranked-cpms-spa`) is a **shared reference client with fixed redirect URIs**, so any other origin
+fails login with `invalid_request` / ID2043 — *"The specified 'redirect_uri' is not valid for this
+client application."*
+
+The fix is not to edit the auth code. Register the deployment's own client:
+**app.proranked.com → Settings → OAuth clients → Register** (redirect `https://HOST/auth/callback`,
+post-logout `https://HOST`, app origin `https://HOST`), then set the returned `pr_spa_…` id as
+`VITE_OIDC_CLIENT_ID`. Allow ~60s before the first login — the new client propagates to the auth
+servers on a timer, and until it does you'll be sent to the driver login instead of the operator one.
+
 ## The two things that will waste your session
 
 **1. Requesting a scope does not grant it.** The app asks for the full `cpms:*` set, but CPO
